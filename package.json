@@ -1,0 +1,27 @@
+{
+  "name": "transplexer-routing",
+  "version": "0.0.0",
+  "description": "Routing library based on transplexer",
+  "main": "dist/transplexer-routing.js",
+  "module": "dist/transplexer-routing.mjs",
+  "browser": "dist/transplexer-routing.umd.js",
+  "repository": "https://github.com/foxbunny/trnasplexer-routing.git",
+  "author": "Hajime Yamasaki Vukelic",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest",
+    "dist": "rollup -c",
+    "prepublish": "yarn run dist"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
+    "jest": "^24.8.0",
+    "rollup": "^1.16.4"
+  },
+  "dependencies": {
+    "core-js": "2",
+    "query-string": "^6.8.1",
+    "transplexer": "^1.0.2"
+  }
+}
