@@ -1,4 +1,6 @@
-# transplexer-routing
+[![Build Status](https://travis-ci.com/foxbunny/transplexer-routing.svg?branch=master)](https://travis-ci.com/foxbunny/transplexer-routing)
+
+# Transplexer routing
 
 Routing library based on transplexer
 
