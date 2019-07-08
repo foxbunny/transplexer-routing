@@ -6,21 +6,18 @@ Routing library based on transplexer
 
 ## Overview
 
-This library is intended to provide routing support to application using
+This library is intended to provide routing support to applications using
 [transplexer](https://github.com/foxbunny/transplexer).
 
-The gist of how it works is that there are one or more pipes that emit routing
-context objects on every 'popstate' event. Each context object contains
-information about the current location, such as route name, arguments, query
-and hash, and arbitrary payload associated with the route. Note that there is
-no 'callback' anywhere. The route payload may be a function, but that is not a
-requirement. This library tries to make the least amount of assumptions about
-how you wish to use it.
+The core assumption is that you would like to react to route changes
+(strictly speaking, to the ['popstate' event](https://mzl.la/2FWzWBU)). This
+library allows you to leverage the transplexer pipes for the purpose.
 
-The library has one important limitation that you should be aware of. It only
-allows one routing table for the entire application (no nested routers, etc).
-This is done primarily to simplify the implementation and reduce the potential
-for complex setups.
+The library currently has two important limitations:
+
+- It only allows one routing table (one set of registered routes).
+- It does not support common path prefixes (e.g., when you want all your path
+  to begin with some prefix).
 
 ## Contents
 
@@ -31,6 +28,7 @@ for complex setups.
   * [Route registration](#route-registration)
   * [Route context](#route-context)
   * [Creating the pipe](#creating-the-pipe)
+  * [Customizing the pipe output](#customizing-the-pipe-output)
   * [Handling the initial page](#handling-the-initial-page)
   * [Changing URLs](#changing-urls)
 
@@ -52,9 +50,12 @@ yarn add --dev transplexer-routing
 
 ## Usage
 
-Routing table, an object containing a set of routes that are present in your
-app, is set up when the application starts. Most application are unable to
-start interacting with the user without this.
+The general usage pattern for this library is as follows:
+
+1. Register routes.
+1. Create a pipe.
+1. Kick-start the route handling by triggering `popstate` manually.
+1. Change URLs in response to user action.
 
 ### Route registration
 
@@ -70,18 +71,23 @@ register('about', '/about');
 register('book', '/book/:id');
 ```
 
-All routes have a name by which we can refer to them. This allows us to build
-routes using the name and route parameters, for example. Names must be unique,
-and it is an error to use the same name twice.
+All routes have a name. This allows us to build routes using the name and route
+parameters, for example. Names must be unique, and it is an error to use the
+same name twice.
 
-URL patterns is a path with optional path argument placeholders. Placeholders
+URL patterns are paths with optional path argument placeholders. Placeholders
 look like `:abc` (colon followed by one or more alphanumeric characters or
-underscore). Placeholders can appear anywhere in the path, and do not
-necessarily have to take up an entire segment between consecutive slashes. For
-instance, `/books/:slug-:id` is a perfectly valid URL pattern. Any data
-appearing in the URL where the placeholders are found will be captured and made
-available to the code handling the routing event under the same name as the
-placeholder.
+underscore). They correspond to locations where URL arguments (dynamic parts of
+URLs) would be present. For example, if we say `/book/:id`, we imply that the
+portion after the `/book/` will be variable, and there could be `/book/1`, and
+`/book/2` and so on, and the numbers 1 and 2 can be captured as `id` when
+handling the routing events.
+
+Placeholders can appear anywhere in the path, and do not necessarily have to
+take up an entire segment between consecutive slashes. For instance,
+`/books/:slug-:id` is a perfectly valid URL pattern. Any data appearing in the
+URL where the placeholders are found will be captured and made available to the
+code handling the routing event under the same name as the placeholder.
 
 Routes can be registered in bulk using the `registerRoutes()`. This function
 takes an array where each member is an array consisting of two or more members
@@ -99,8 +105,8 @@ registerRoutes([
 ```
 
 Just like the `register()` function, `registerRoutes()` can be called multiple
-times, and will raise an exception when multiple routes with the same name are
-specified.
+times, and each call will extend the routing table. It will also raise an
+exception when multiple routes with the same name are specified.
 
 ### Route context
 
@@ -117,21 +123,40 @@ The route context object has the following keys:
 - `hash` - an object containing hash parameters.
 
 The `args`, `query`, and `hash` are all objects, key-value pairs that map
-parameter names to one or more values (if there are multiple values for the
-same parameter name, they are collected into an array). 
+parameter names to one or more values. If there are multiple values for a given
+parameter name, they are collected into an array. Values coming from URLs are
+always all strings.
+
+The `args` property contains parameters collected from the path placeholders in
+the URL pattern, as discussed in the previous section. Args, unlike `query` and
+`hash` do not allow multiple values per parameter name. If you have
+placeholders of the same name appearing multiple times, only the last one will
+capture its value.
 
 The `query` comes from the query string in the URL, and the `hash` comes the
 from fragment identifier, or hash. Both `query` and `hash` are treated
-identically, and they simply differ in the prefix (i.e., '?' for query strings,
-and '#' for hashes).
+identically. This means that the text after the `#` in the hash is treated the
+same way as the characters after `?` in the query string: `#id=12&show=author`
+and `?id=12&show=author` both result in the same object: 
+
+```javascript
+{id: '12', show: 'author'}
+```
 
 The `payload` will be discussed later, but it's any value you pass as a payload
 during registration.
 
-To give you a concrete example, let's assume that routes are registered as in
-the last example. Then an URL that looks like 
-'/books/12?show=author&show=isbn#menu=1' is interpreted as the following 
-object:
+To give you a concrete example, let's assume that a route is registered as
+follows:
+
+```javascript
+import {register} from 'transplexer-routing';
+
+register('book', '/book/:id');
+```
+
+For this route, an URL that looks like '/books/12?show=author&show=isbn#menu=1'
+is interpreted as the following object:
 
 ```javascript
 {
@@ -151,7 +176,7 @@ object:
 
 ### Creating the pipe
 
-The primary mechanism for handling routes changes with this library is the
+With this library, the primary mechanism for handling routes changes is the
 transplexer pipe. This pipes transmit route context objects every time there is
 a route change.
 
@@ -167,9 +192,11 @@ pipe.connect(function (context) {
 });
 ```
 
+### Customizing the pipe output
+
 There are two ways to customize the context. 
 
-The first way is to customize it statically by providing the payload. Here's an
+The first way is to statically customize it by providing the payload. Here's an
 example of doing just that using 'page objects', made-up objects that contain
 information about the pages we want to render.
 
@@ -199,6 +226,12 @@ pipe.connect(function (context) {
 });
 ```
 
+In this example, we have some objects that are called 'pages' which are used as
+payloads for each route. Suppose that the pages have a `start()`, `stop()` and
+`render()` methods. Since the payload is part of the routing context, on each
+routing event, we can obtain the page that matches the current route, and call
+its methods to facilitate page switches.
+
 Another way to customize the context is to use a transformer. We won't go too
 much into how transformers are written and how they work as that is already
 documented in the [transplexer
@@ -214,6 +247,10 @@ function contextToPage(next) {
     next(pages[context.name] || pages.notFound);
   };
 }
+
+register('home', '/');
+register('about', '/about');
+register('book', '/book/:id');
 
 let currentPage;
 let root = document.querySelector('#app');
@@ -233,11 +270,14 @@ pipe.connect(function (page) {
 });
 ```
 
-The difference between these two may seem cosmetic, but they become quite
+Just like the first one, the second example uses page objects, but this time
+the page objects are not part of the context, but are dynamically calculated on
+each and every routing event via the `contextToPage()` transformer.
+
+The difference between the two methods may seem cosmetic, but they become quite
 obvious when you take into account the fact that an application does not
-necessarily have just one pipe. It's entirely valid to have multiple pipes that
-work independent of each other, and depending on what you do with them, one or
-the other approach may be better-suited.
+necessarily have just one pipe. When we use payload, it is available to all
+pipes in the application. On the other hand, transformers are per-pipe.
 
 ### Handling the initial page
 
@@ -254,15 +294,16 @@ start();
 
 ### Changing URLs
 
-You usually want to change the current URL (in other words 'go to another
-page') when user does something. This could either be a click on a link, or a
-button, or a redirect due to desired target not being available at that time.
-To go to another URL at any moment, we can use the `go()` function.
+You usually want to change the current URL when user does something (e.g., go
+to another 'page' when user clicks a link). This could either be a click on a
+link, or a button, or a redirect due to desired target not being available at
+that time.  To go to another URL at any moment, we can use the `go()` function.
 
 ```javascript
 import {go} from 'transplexer-routing';
 
 go('/about');
+// goes to '/about'
 ```
 
 When `go()` is called, it updates the browser's history stack by adding the
@@ -286,7 +327,7 @@ import {go, register, url} from 'transplexer-routing';
 register('about', '/about', pages.about);
 
 go(url('about')); 
-// '/about'
+// goes to '/about'
 ```
 
 The first argument to `url()` is the name. An optional second argument is a
@@ -307,7 +348,7 @@ import {go, register, url} from 'transplexer-routing';
 register('book', '/book/:id', pages.book);
 
 go(url('book', {args: {id: 34}}));
-// '/book/34'
+// goes to '/book/34'
 ```
 
 The query string and hash can also be added using the `url()`, in particular
@@ -329,6 +370,6 @@ go(url('book', {
     sidebar: 2,
   },
 }));
-// '/book/34?show=author&show=isbn#menu=1&sidebar=2'
+// goes to '/book/34?show=author&show=isbn#menu=1&sidebar=2'
 ```
 
