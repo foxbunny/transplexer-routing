@@ -123,6 +123,9 @@ export function register(name, pattern, payload = null) {
 /**
  * Find the route that matches the current path and return a routing context
  *
+ * It takes a `location`-like object as its only argument. In particular, the
+ * object is expected to have `pathname`, `search` and `hash` properties.
+ *
  * The routing context is an object that has the following properties:
  *
  * - `name` - name of the route that matched.
@@ -131,12 +134,10 @@ export function register(name, pattern, payload = null) {
  * - `query` - an object containing query parameters.
  * - `hash` - an object containing hash parameters.
  */
-export function match() {
-  let path = window.location.pathname;
-
+export function match({pathname, search, hash}) {
   for (let i = 0, l = matchingTable.length; i < l; i++) {
     let {re, name} = matchingTable[i];
-    let reMatch = re.exec(path);
+    let reMatch = re.exec(pathname);
 
     if (reMatch == null) {
       continue;
@@ -152,8 +153,8 @@ export function match() {
       args[paramName] = capturedArgs[index];
     });
 
-    let query = qs.parse(window.location.search);
-    let hash = qs.parse(window.location.hash);
+    let query = qs.parse(search);
+    let hash = qs.parse(hash);
 
     return {
       name,
@@ -248,12 +249,32 @@ export function go(url) {
 };
 
 /**
+ * Transformer that transmits the location object
+ */
+function locationTransformer(next) {
+  return function () {
+    next({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+    });
+  };
+}
+
+/**
  * Transformer that ignores any input and transmits a routing context object
  */
 function matchTransformer(next) {
-  return function () {
-    next(match());
+  return function (...args) {
+    next(match(...args));
   };
+}
+
+/**
+ * A no-op transformer that is used when no transformer is supplied by user
+ */
+function noopTransformer(next) {
+  return next;
 }
 
 /**
@@ -275,11 +296,18 @@ function matchTransformer(next) {
  * Returns a transplexer pipe object with `stop()` method that stops the event
  * listener.
  *
- * Any number of transplexer transformers can be added to the pipe, specified
- * as positional arguments.
+ * This function takes an optional transformer.  The transformer will receve a
+ * `location` object and is expected to transmit an `location` object or an
+ * object that has compatible properties (at the very least, `pathname`,
+ * `search` and `hash`). This can be useful to customize the location prior to
+ * matching.
  */
-export function createPipe(...transformers) {
-  let routingPipe = pipe(matchTransformer, ...transformers);
+export function createPipe(transformer = noopTransformer) {
+  let routingPipe = pipe(
+    locationTransformer,
+    transformer,
+    matchTransformer
+  );
   window.addEventListener('popstate', routingPipe.send, false);
   routingPipe.stop = function () {
     window.removeEventListener('popstate', routingPipe.send, false);

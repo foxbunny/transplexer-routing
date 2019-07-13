@@ -13,11 +13,9 @@ The core assumption is that you would like to react to route changes
 (strictly speaking, to the ['popstate' event](https://mzl.la/2FWzWBU)). This
 library allows you to leverage the transplexer pipes for the purpose.
 
-The library currently has two important limitations:
-
-- It only allows one routing table (one set of registered routes).
-- It does not support common path prefixes (e.g., when you want all your path
-  to begin with some prefix).
+The library has one limitation that you should be aware of. It only allows one
+routing table (one set of registered routes). This is intentional, and it will
+most likely never be changed as it keeps the library relatively simple.
 
 ## Contents
 
@@ -28,7 +26,7 @@ The library currently has two important limitations:
   * [Route registration](#route-registration)
   * [Route context](#route-context)
   * [Creating the pipe](#creating-the-pipe)
-  * [Customizing the pipe output](#customizing-the-pipe-output)
+  * [The route payload](#the-route-payload)
   * [Handling the initial page](#handling-the-initial-page)
   * [Changing URLs](#changing-urls)
 
@@ -192,12 +190,31 @@ pipe.connect(function (context) {
 });
 ```
 
-### Customizing the pipe output
+The `createPipe()` function accepts zero or more transformers which can be used
+to customize the location object prior to route matching. For example, if we
+want to have a customizable prefix in our routes, we might use a transformer
+like this:
 
-There are two ways to customize the context. 
+```javascript
+import {createPipe} from 'transplexer-routing';
 
-The first way is to statically customize it by providing the payload. Here's an
-example of doing just that using 'page objects', made-up objects that contain
+function prefixTransformer(next) {
+  return function (loc) {
+    next({
+      ...loc,
+      pathname: loc.pathname.replace(/^\/app/, ''),
+    });
+  };
+}
+
+let pipe = createPipe(prefixTransformer);
+```
+
+### The route payload
+
+Pipe payloads are used to attach arbitrary information to a route. This
+information is static, and is specified during registraiton. Here's an example
+of doing just that using 'page objects', made-up objects that contain
 information about the pages we want to render.
 
 ```javascript
@@ -231,53 +248,6 @@ payloads for each route. Suppose that the pages have a `start()`, `stop()` and
 `render()` methods. Since the payload is part of the routing context, on each
 routing event, we can obtain the page that matches the current route, and call
 its methods to facilitate page switches.
-
-Another way to customize the context is to use a transformer. We won't go too
-much into how transformers are written and how they work as that is already
-documented in the [transplexer
-documentation](https://github.com/foxbunny/transplexer#transplexer). Instead,
-we'll simply give an example here.
-
-```javascript
-import {register, createPipe} from 'transplexer-routing';
-import * as pages from './pages';
-
-function contextToPage(next) {
-  return function (context) {
-    next(pages[context.name] || pages.notFound);
-  };
-}
-
-register('home', '/');
-register('about', '/about');
-register('book', '/book/:id');
-
-let currentPage;
-let root = document.querySelector('#app');
-let pipe = createPipe(contextToPage);
-
-pipe.connect(function (page) {
-  if (currentPage) {
-    currentPage.stop();
-  }
-
-  currentPage = page;
-
-  currentPage.start();
-  let html = currentPage.render();
-  root.innerHTML = '';
-  root.appendChild(html);
-});
-```
-
-Just like the first one, the second example uses page objects, but this time
-the page objects are not part of the context, but are dynamically calculated on
-each and every routing event via the `contextToPage()` transformer.
-
-The difference between the two methods may seem cosmetic, but they become quite
-obvious when you take into account the fact that an application does not
-necessarily have just one pipe. When we use payload, it is available to all
-pipes in the application. On the other hand, transformers are per-pipe.
 
 ### Handling the initial page
 

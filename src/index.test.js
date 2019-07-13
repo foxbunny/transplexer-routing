@@ -114,8 +114,7 @@ describe('match', function () {
   });
 
   test('return matched', function () {
-    fakeLoc.pathname = '/';
-    let matched = routing.match();
+    let matched = routing.match({pathname: '/'});
     expect(matched).toEqual({
       name: 'home',
       payload: homePage,
@@ -126,8 +125,7 @@ describe('match', function () {
   });
 
   test('with paramters', function () {
-    fakeLoc.pathname = '/books/abc1234';
-    let matched = routing.match();
+    let matched = routing.match({pathname: '/books/abc1234'});
     expect(matched).toEqual({
       name: 'books',
       payload: booksPage,
@@ -138,8 +136,7 @@ describe('match', function () {
   });
 
   test('no match', function () {
-    fakeLoc.pathname = '/about';
-    let matched = routing.match();
+    let matched = routing.match({pathname: '/about'});
     expect(matched).toEqual({});
   });
 });
@@ -266,22 +263,19 @@ describe('createPipe', function () {
     pipe.stop();
   });
 
-  test('use a custom transformer', function () {
+  test('use a custom pre transformer', function () {
     function trans(next) {
-      return function (ctx) {
-        if (ctx.args.id) {
-          ctx.args.id = parseInt(ctx.args.id, 10);
-        }
-        next(ctx);
+      return function ({pathname, search, hash}) {
+        next({pathname: pathname.replace(/^\/app/, ''), search, hash});
       };
     }
     let callback = jest.fn();
     let pipe = routing.createPipe(trans);
     pipe.connect(callback);
-    fakeLoc.pathname = '/books/12';
+    fakeLoc.pathname = '/app/books/12';
     window.dispatchEvent(new Event('popstate'));
     let context = callback.mock.calls[0][0];
-    expect(context.args).toEqual({id: 12});
+    expect(context.name).toEqual('books');
     pipe.stop();
   });
 });
