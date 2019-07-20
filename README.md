@@ -172,6 +172,22 @@ is interpreted as the following object:
 }
 ```
 
+A route context object for any object that has `pathname`, `search` and `hash`
+properties (like `window.location`), can be obtained using a `match()`
+function. For example:
+
+```
+import {match} from 'transplexer-routing';
+
+match(window.location);
+```
+
+For any matching route, this function returns a context object. If no route
+matches, it returns an empty object.
+
+Depending on how you integrate this library into your application, manually
+matching routes may or may not be needed.
+
 ### Creating the pipe
 
 With this library, the primary mechanism for handling routes changes is the
