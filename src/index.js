@@ -154,7 +154,7 @@ export function match({pathname, search, hash}) {
     });
 
     let query = qs.parse(search);
-    let hash = qs.parse(hash);
+    hash = qs.parse(hash);
 
     return {
       name,
