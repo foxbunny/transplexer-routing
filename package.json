@@ -1,6 +1,6 @@
 {
   "name": "transplexer-routing",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Routing library based on transplexer",
   "main": "dist/transplexer-routing.js",
   "module": "dist/transplexer-routing.mjs",
