@@ -4,7 +4,7 @@ import pipe from 'transplexer';
 /**
  * Remove double, leading and trailing slashes
  */
-function cleanPath(path) {
+function cleanPath (path) {
   return path
     .replace(/^\//, '')
     .replace(/\/$/, '')
@@ -28,7 +28,7 @@ function cleanPath(path) {
  * In the above example, the `slug` and `id` are considered separately
  * because neither dash nor colon can be used as part of a placeholder name.
  */
-export function toPathRegExp(pattern) {
+export function toPathRegExp (pattern) {
   let params = [];
 
   // Replace all parameter placeholders into appropriate regexp patterns. While
@@ -38,7 +38,7 @@ export function toPathRegExp(pattern) {
     pattern
       .replace(/:(\w+)/g, function (_match, param) {
         params.push(param);
-        return '(.+?)'
+        return '(.+?)';
       })
       .replace(/\//g, '\\/') +
     '$'
@@ -47,9 +47,8 @@ export function toPathRegExp(pattern) {
   return {
     re: new RegExp(regexpString),
     params: params,
-  }
-};
-
+  };
+}
 
 // Router configuration
 let routerConfig = {
@@ -68,12 +67,12 @@ let routerConfig = {
  * This function is meant for use during tested, and should not be invoked in
  * your application code.
  */
-export function __clearRouteTable() {
+export function __clearRouteTable () {
   routerConfig.matchingTable.length = 0;
   for (let key in routerConfig.lookupTable) {
     delete routerConfig.lookupTable[key];
   }
-};
+}
 
 /**
  * Get the lookup table
@@ -81,9 +80,9 @@ export function __clearRouteTable() {
  * This function is meant for use during tested, and should not be invoked in
  * your application code.
  */
-export function __getLookupTable() {
+export function __getLookupTable () {
   return routerConfig.lookupTable;
-};
+}
 
 /**
  * Register a named URL pattern and its payload
@@ -109,20 +108,20 @@ export function __getLookupTable() {
  *     register('bookAuthor', '/books/:slug-:id/author', author);
  *
  */
-export function register(name, pattern, payload = null) {
+export function register (name, pattern, payload = null) {
   if (routerConfig.lookupTable.hasOwnProperty(name)) {
     throw Error(`Route with the name '${name}' already registered`);
   }
 
-  let {re, params} = toPathRegExp(pattern);
+  let { re, params } = toPathRegExp(pattern);
 
-  routerConfig.matchingTable.push({re, name});
+  routerConfig.matchingTable.push({ re, name });
   routerConfig.lookupTable[name] = {
     pattern,
     payload,
     params,
   };
-};
+}
 
 /**
  * Find the route that matches the current path and return a routing context
@@ -138,9 +137,9 @@ export function register(name, pattern, payload = null) {
  * - `query` - an object containing query parameters.
  * - `hash` - an object containing hash parameters.
  */
-export function match({pathname, search, hash}) {
+export function match ({ pathname, search, hash }) {
   for (let i = 0, l = routerConfig.matchingTable.length; i < l; i++) {
-    let {re, name} = routerConfig.matchingTable[i];
+    let { re, name } = routerConfig.matchingTable[i];
     let reMatch = re.exec(pathname);
 
     if (reMatch == null) {
@@ -171,7 +170,7 @@ export function match({pathname, search, hash}) {
 
   // Nothing matched
   return {};
-};
+}
 
 /**
  * Register routes
@@ -192,12 +191,12 @@ export function match({pathname, search, hash}) {
  *
  * An optional page decorator can be specified as the second argument.
  */
-export function registerRoutes(routes) {
+export function registerRoutes (routes) {
   for (let i = 0, l = routes.length; i < l; i++) {
     let [name, path, callback] = routes[i];
     register(name, path, callback);
   }
-};
+}
 
 /**
  * Look up a route by name and returns a string URL
@@ -211,7 +210,7 @@ export function registerRoutes(routes) {
  * - `query` - an object representing query string parameters.
  * - `hash` - an object representing hash parameters.
  */
-export function url(name, parameters) {
+export function url (name, parameters) {
   parameters = parameters || {};
 
   let route = routerConfig.lookupTable[name];
@@ -242,20 +241,20 @@ export function url(name, parameters) {
   }
 
   return url;
-};
+}
 
 /**
  * Modify browser history and emit the `routing.update` event
  */
-export function go(url) {
+export function go (url) {
   window.history.pushState(null, '', url);
   window.dispatchEvent(new Event('popstate'));
-};
+}
 
 /**
  * Transformer that transmits the location object
  */
-function locationTransformer(next) {
+function locationTransformer (next) {
   return function () {
     next({
       pathname: window.location.pathname,
@@ -268,7 +267,7 @@ function locationTransformer(next) {
 /**
  * Transformer that ignores any input and transmits a routing context object
  */
-function matchTransformer(next) {
+function matchTransformer (next) {
   return function (...args) {
     next(match(...args));
   };
@@ -277,7 +276,7 @@ function matchTransformer(next) {
 /**
  * A no-op transformer that is used when no transformer is supplied by user
  */
-function noopTransformer(next) {
+function noopTransformer (next) {
   return next;
 }
 
@@ -306,22 +305,22 @@ function noopTransformer(next) {
  * `search` and `hash`). This can be useful to customize the location prior to
  * matching.
  */
-export function createPipe(transformer = noopTransformer) {
+export function createPipe (transformer = noopTransformer) {
   let routingPipe = pipe(
     locationTransformer,
     transformer,
-    matchTransformer
+    matchTransformer,
   );
   window.addEventListener('popstate', routingPipe.send, false);
   routingPipe.stop = function () {
     window.removeEventListener('popstate', routingPipe.send, false);
   };
   return routingPipe;
-};
+}
 
 /**
  * Manually dispatch a popstate event, usually to kick-start the router
  */
-export function start() {
+export function start () {
   window.dispatchEvent(new Event('popstate'));
-};
+}
