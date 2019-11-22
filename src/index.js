@@ -50,13 +50,17 @@ export function toPathRegExp(pattern) {
   }
 };
 
-// Array holding route regexps and the matching names, which is looked up in
-// order when searching for a matching route.
-let matchingTable = [];
 
-// Mapping between the route name and route details such as the callback
-// function and parameter list.
-let lookupTable = {};
+// Router configuration
+let routerConfig = {
+  // Array holding route regexps and the matching names, which is looked up in
+  // order when searching for a matching route.
+  matchingTable: [],
+
+  // Mapping between the route name and route details such as the callback
+  // function and parameter list.
+  lookupTable: {},
+};
 
 /**
  * Clear the registered routes
@@ -65,9 +69,9 @@ let lookupTable = {};
  * your application code.
  */
 export function __clearRouteTable() {
-  matchingTable.length = 0;
-  for (let key in lookupTable) {
-    delete lookupTable[key];
+  routerConfig.matchingTable.length = 0;
+  for (let key in routerConfig.lookupTable) {
+    delete routerConfig.lookupTable[key];
   }
 };
 
@@ -78,7 +82,7 @@ export function __clearRouteTable() {
  * your application code.
  */
 export function __getLookupTable() {
-  return lookupTable;
+  return routerConfig.lookupTable;
 };
 
 /**
@@ -106,14 +110,14 @@ export function __getLookupTable() {
  *
  */
 export function register(name, pattern, payload = null) {
-  if (lookupTable.hasOwnProperty(name)) {
+  if (routerConfig.lookupTable.hasOwnProperty(name)) {
     throw Error(`Route with the name '${name}' already registered`);
   }
 
   let {re, params} = toPathRegExp(pattern);
 
-  matchingTable.push({re, name});
-  lookupTable[name] = {
+  routerConfig.matchingTable.push({re, name});
+  routerConfig.lookupTable[name] = {
     pattern,
     payload,
     params,
@@ -135,15 +139,15 @@ export function register(name, pattern, payload = null) {
  * - `hash` - an object containing hash parameters.
  */
 export function match({pathname, search, hash}) {
-  for (let i = 0, l = matchingTable.length; i < l; i++) {
-    let {re, name} = matchingTable[i];
+  for (let i = 0, l = routerConfig.matchingTable.length; i < l; i++) {
+    let {re, name} = routerConfig.matchingTable[i];
     let reMatch = re.exec(pathname);
 
     if (reMatch == null) {
       continue;
     }
 
-    let route = lookupTable[name];
+    let route = routerConfig.lookupTable[name];
 
     // Convert the captured arguments into an object using route's parameter
     // names
@@ -210,7 +214,7 @@ export function registerRoutes(routes) {
 export function url(name, parameters) {
   parameters = parameters || {};
 
-  let route = lookupTable[name];
+  let route = routerConfig.lookupTable[name];
 
   if (route == null) {
     return name;
