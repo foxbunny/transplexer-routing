@@ -23,6 +23,6 @@
   "dependencies": {
     "core-js": "2",
     "query-string": "^6.8.1",
-    "transplexer": "^1.0.2"
+    "transplexer": "^1.1.0"
   }
 }
