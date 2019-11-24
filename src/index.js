@@ -153,7 +153,7 @@ export function match ({ pathname, search, hash }) {
     let capturedArgs = [].slice.call(reMatch, 1);
     let args = {};
     route.params.forEach(function (paramName, index) {
-      args[paramName] = capturedArgs[index];
+      args[paramName] = decodeURIComponent(capturedArgs[index]);
     });
 
     let query = qs.parse(search);
@@ -228,7 +228,10 @@ export function url (name, parameters) {
     }
 
     route.params.forEach(function (paramName) {
-      url = url.replace(`:${paramName}`, parameters.args[paramName]);
+      url = url.replace(
+        `:${paramName}`,
+        encodeURIComponent(parameters.args[paramName]),
+      );
     });
   }
 

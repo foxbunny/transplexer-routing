@@ -124,12 +124,23 @@ describe('match', function () {
     })
   });
 
-  test('with paramters', function () {
+  test('with parameters', function () {
     let matched = routing.match({pathname: '/books/abc1234'});
     expect(matched).toEqual({
       name: 'books',
       payload: booksPage,
       args: {id: 'abc1234'},
+      query: {},
+      hash: {},
+    });
+  });
+
+  test('with URI-encoded parameters', function () {
+    let matched = routing.match({pathname: '/books/abc%201234'});
+    expect(matched).toEqual({
+      name: 'books',
+      payload: booksPage,
+      args: {id: 'abc 1234'},
       query: {},
       hash: {},
     });
@@ -207,6 +218,11 @@ describe('url', function () {
   test('path with args', function () {
     expect(routing.url('books', {args: {slug: 'old', id: '1234'}}))
       .toBe('/books/old-1234');
+  });
+
+  test('path with args that contain illegal characters', function () {
+    expect(routing.url('books', {args: {slug: 'My old book', id: '1234'}}))
+      .toBe('/books/My%20old%20book-1234');
   });
 
   test('path with missing args', function () {
